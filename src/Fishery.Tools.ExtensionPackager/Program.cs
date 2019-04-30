@@ -56,7 +56,11 @@ namespace Fishery.Tools.ExtensionPackager
                 MetaDependencies = new List<MetaDependency>(),
                 UpdateLog = new Stack<UpdateLog>()
             };
+            List<MetaDependency> metaList = new List<MetaDependency>();
+            List<Dependency> extensionList = new List<Dependency>();
+            List<string> depList = new List<string>();
             bool isMeta = false;
+
             if (path.EndsWith(".Meta.dll"))
             {
                 Assembly metaAssembly = Assembly.LoadFile(path);
@@ -67,6 +71,7 @@ namespace Fishery.Tools.ExtensionPackager
             else
             {
                 Assembly extensionAssembly = Assembly.LoadFile(path);
+                installation.Id = extensionAssembly.GetName().Name;
                 bool hasValidExtension = false;
                 foreach (Type t in extensionAssembly.GetTypes())
                 {
@@ -84,14 +89,9 @@ namespace Fishery.Tools.ExtensionPackager
                     return;
                 }
 
-                installation.Id = extensionAssembly.GetName().Name;
-
                 AssemblyName[] referencedAssemblyList;
                 referencedAssemblyList = extensionAssembly.GetReferencedAssemblies();
 
-                List<MetaDependency> metaList = new List<MetaDependency>();
-                List<Dependency> extensionList = new List<Dependency>();
-                List<string> depList = new List<string>();
 
                 foreach (var assemblyName in referencedAssemblyList)
                 {
@@ -111,32 +111,40 @@ namespace Fishery.Tools.ExtensionPackager
                         }
                     }
                 }
-
-                foreach (var dependency in metaList)
-                {
-                    dependency.VersionCode =
-                        ReadInt($"Which version of the [Meta]{dependency.Name} is using?", "VersionCode");
-                    installation.MetaDependencies.Add(dependency);
-                }
-
-                foreach (var dependency in extensionList)
-                {
-                    dependency.VersionCode =
-                        ReadInt($"Which version of the [Extension]{dependency.Name} is using?", "VersionCode");
-                    installation.Dependencies.Add(dependency);
-                }
-
-                foreach (var dep in depList)
-                {
-                    List<string> depReferenceList = ResolveDependencyReferenceList(dep);
-                    foreach (var depReference in depReferenceList)
-                    {
-                        installation.FileList.Add($"dependencies/{installation.Id}/{depReference}.dll");
-                    }
-                }
             }
 
             Installation latestInstallation = GetExistPackageInfo(installation.Id);
+
+            foreach (var dependency in metaList)
+            {
+                var prevDependency = latestInstallation?.MetaDependencies.Find(m => m.Name == dependency.Name);
+                if (prevDependency != null)
+                    dependency.VersionCode = prevDependency.VersionCode;
+                dependency.VersionCode =
+                    ReadInt($"Which version of the [Meta]{dependency.Name} is using?", "VersionCode",dependency.VersionCode.ToString());
+                installation.MetaDependencies.Add(dependency);
+            }
+
+            foreach (var dependency in extensionList)
+            {
+                var prevDependency = latestInstallation?.Dependencies.Find(m => m.Name == dependency.Name);
+                if (prevDependency != null)
+                    dependency.VersionCode = prevDependency.VersionCode;
+                dependency.VersionCode =
+                    ReadInt($"Which version of the [Extension]{dependency.Name} is using?", "VersionCode",dependency.VersionCode.ToString());
+                installation.Dependencies.Add(dependency);
+            }
+
+            foreach (var dep in depList)
+            {
+                List<string> depReferenceList = ResolveDependencyReferenceList(dep);
+                foreach (var depReference in depReferenceList)
+                {
+                    installation.FileList.Add($"dependencies/{installation.Id}/{depReference}.dll");
+                }
+            }
+
+            
             bool useExistInfo = false;
             if (latestInstallation != null)
             {

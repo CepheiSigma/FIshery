@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Threading;
+using Fishery.Core.Extension;
+using Fishery.Core.Utils;
 using NCrontab;
 
 namespace Fishery.Core.Cron
@@ -14,31 +16,6 @@ namespace Fishery.Core.Cron
         public List<int> Day { get; set; }
         public List<int> Month { get; set; }
         public List<int> Week { get; set; }
-    }
-
-    public class TaskThread : SharedObject
-    {
-        private TimeSpan _maxAliveTime;
-
-        public TaskThread(Thread thread, TimeSpan maxAliveTime)
-        {
-            _maxAliveTime = maxAliveTime;
-            Thread = thread;
-            Thread.Start();
-        }
-
-        public DateTime CreateTime { get; set; }
-        public Thread Thread { get; }
-
-        public bool IsAlive
-        {
-            get
-            {
-                if (CreateTime + _maxAliveTime < DateTime.Now)
-                    Thread.Abort();
-                return Thread.IsAlive;
-            }
-        }
     }
 
     public class TaskConfig : SharedObject
@@ -67,35 +44,67 @@ namespace Fishery.Core.Cron
         }
     }
 
-    public delegate void OnToggleTask();
+    public class TaskThread : SharedObject
+    {
+        private TimeSpan _maxAliveTime;
+        private string _executionId;
+        public string ExecutionId => _executionId;
+
+        public TaskThread(Thread thread, TimeSpan maxAliveTime,string executionId)
+        {
+            _maxAliveTime = maxAliveTime;
+            _executionId = executionId;
+            Thread = thread;
+            Thread.Start();
+        }
+
+        public DateTime CreateTime { get; set; }
+        public Thread Thread { get; }
+
+        public bool IsAlive
+        {
+            get
+            {
+                if (CreateTime + _maxAliveTime < DateTime.Now)
+                {
+                    Thread.Abort();
+                    EventRouter.GetInstance().FireEvent("Task_Timeout",this,_executionId);
+                }
+                return Thread.IsAlive;
+            }
+        }
+    }
+
+    public delegate void OnToggleTask(string executionId);
 
     public class ScheduleType : SharedObject
     {
         public OnToggleTask Method { get; set; }
         public bool IsAsync { get; set; }
         public string Name => Method.Method.Name;
+        public TimeSpan MaximumExecuteTime { get; set; }
 
         public ScheduleType(OnToggleTask method, bool async)
         {
             IsAsync = async;
             Method = method;
+            MaximumExecuteTime = TimeSpan.FromHours(24);
         }
 
-        public TaskThread Run()
+        public TaskThread Run(string executionId)
         {
             TaskThread taskThread = new TaskThread(new Thread((o) =>
             {
                 try
                 {
-                    Method.Invoke();
+                    Method.Invoke(executionId);
                 }
                 catch (Exception ex)
                 {
                     EventRouter.GetInstance().FireEvent("Warn_Occurred", this,
                         $"Execute task {Method} failed: {(ex.InnerException == null ? ex.Message : ex.InnerException.Message)}\nStack trace:{ex.StackTrace}");
                 }
-            }), TimeSpan.FromDays(1));
-            taskThread.CreateTime = DateTime.Now;
+            }), MaximumExecuteTime, executionId) {CreateTime = DateTime.Now};
             return taskThread;
         }
     }
@@ -128,10 +137,11 @@ namespace Fishery.Core.Cron
                         taskConfig.ThreadPool.Clear();
                     if (taskConfig.NextDateTime.HasValue && taskConfig.NextDateTime <= DateTime.Now)
                     {
+                        string executionId = Common.MD5(Clock.GetTimeStamp(true) + taskConfig.TargetType.Name);
                         if (taskConfig.ThreadPool.Count > 0 && !taskConfig.TargetType.IsAsync)
                             continue;
                         taskConfig.LastRunTime = now;
-                        TaskThread thread = taskConfig.TargetType.Run();
+                        TaskThread thread = taskConfig.TargetType.Run(executionId);
                         taskConfig.ThreadPool.Add(thread);
                         taskConfig.GoNext();
                     }
