@@ -84,6 +84,8 @@ namespace Fishery.App.Service
                                 string extensionName = Console.ReadLine();
                                 Console.Write("Method:");
                                 string method = Console.ReadLine();
+                                Console.Write("Param(splited with ,):");
+                                string[] param = Console.ReadLine().Split(',');
                                 IExtension extension = ExtensionManager.GetInstance().GetExtensionByName(extensionName);
                                 BindingFlags flags = BindingFlags.InvokeMethod | BindingFlags.Instance |
                                                      BindingFlags.Public;
@@ -93,7 +95,7 @@ namespace Fishery.App.Service
                                     continue;
                                 }
 
-                                (extension as SharedObject).Invoke(method, flags, new object[] { });
+                                (extension as SharedObject).Invoke(method, flags, param);
                                 Console.WriteLine("Excuted");
                                 break;
                             case "event":

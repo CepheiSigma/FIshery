@@ -36,8 +36,9 @@
     <Reference Include="NDesk.Options, Version=0.2.1.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\NDesk.Options.0.2.1\lib\NDesk.Options.dll</HintPath>
     </Reference>
-    <Reference Include="Sapphire.Universal.Net">
-      <HintPath>..\..\..\CrossPlatform.CSharp.Sapphire\bin\Debug\Sapphire.Universal.Net.dll</HintPath>
+    <Reference Include="Sapphire.Windows.Net, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\CrossPlatform.CSharp.Sapphire\bin\Debug\Sapphire.Windows.Net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

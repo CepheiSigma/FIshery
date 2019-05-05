@@ -2,7 +2,7 @@
 using System.Net;
 using System.Text;
 using NDesk.Options;
-using Sapphire.Universal.Net;
+using Sapphire.Windows.Net;
 
 namespace Fishery.CLI
 {
@@ -39,6 +39,16 @@ namespace Fishery.CLI
                     m => { mode = "INSTALL"; }
                 },
                 {
+                    "u|update",
+                    "",
+                    m => { mode = "UPDATE"; }
+                },
+                {
+                    "r|remove",
+                    "",
+                    m => { mode = "REMOVE"; }
+                },
+                {
                     "v|version", "",
                     v => { Console.WriteLine("Fishery Command Line Interface v0.0.2"); }
                 },
@@ -56,6 +66,12 @@ namespace Fishery.CLI
                                 else
                                     InstallExtension(host, items[0], items[1], forced);
                                 break;
+                            case "UPDATE":
+                                UpateExtension(host,expression);
+                                break;
+                            case "REMOVE":
+                                RemoveExtension(host,expression);
+                                break;
                         }
                     }
                 }
@@ -71,8 +87,6 @@ namespace Fishery.CLI
                 Console.WriteLine(e.Message);
                 Console.WriteLine(e.StackTrace);
             }
-
-            Console.ReadLine();
         }
 
         static void InstallExtension(string host, string name, string versionCode, bool forced = false)
@@ -93,6 +107,41 @@ namespace Fishery.CLI
             else
             {
                 Console.WriteLine($"[{response.Status}]install {name} failed!");
+                Console.WriteLine($"{Encoding.UTF8.GetString(response.Content)}");
+            }
+        }
+
+        static void UpateExtension(string host, string name)
+        {
+            Console.WriteLine($"{name} updating...");
+            HttpClient client = new HttpClient();
+            client.Method = HttpMethod.POST;
+            client.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+            var response = client.SendRequest(host + "/modern-extension-installer/extensions/"+ name+"/update");
+            if (response.Status >= HttpStatusCode.OK && response.Status < HttpStatusCode.BadRequest)
+            {
+                Console.WriteLine($"[{response.Status}]{name} updated!");
+            }
+            else
+            {
+                Console.WriteLine($"[{response.Status}]update {name} failed!");
+                Console.WriteLine($"{Encoding.UTF8.GetString(response.Content)}");
+            }
+        }
+
+        static void RemoveExtension(string host, string name)
+        {
+            Console.WriteLine($"{name} uninstalling...");
+            HttpClient client = new HttpClient();
+            client.Method = HttpMethod.DELETE;
+            var response = client.SendRequest(host + "/modern-extension-installer/extensions/" + name);
+            if (response.Status >= HttpStatusCode.OK && response.Status < HttpStatusCode.BadRequest)
+            {
+                Console.WriteLine($"[{response.Status}]{name} updated!");
+            }
+            else
+            {
+                Console.WriteLine($"[{response.Status}]update {name} failed!");
                 Console.WriteLine($"{Encoding.UTF8.GetString(response.Content)}");
             }
         }

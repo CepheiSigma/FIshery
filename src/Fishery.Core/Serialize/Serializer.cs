@@ -12,8 +12,13 @@ namespace Fishery.Core.Serialize
 
         public Serializer()
         {
-            _jsonSerializer = new JsonSerializer();
-            _jsonSerializer.Error += (sender, e) => e.ErrorContext.Handled = true;
+            var settings = new JsonSerializerSettings
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                DateFormatString = "yyyy-MM-dd HH:mm:ss",
+                Error = (sender, e) => e.ErrorContext.Handled = true
+            };
+            _jsonSerializer = JsonSerializer.Create(settings);
         }
 
         public string SerializeToString(object data)

@@ -102,7 +102,7 @@ namespace Fishery.Core.Cron
                 catch (Exception ex)
                 {
                     EventRouter.GetInstance().FireEvent("Warn_Occurred", this,
-                        $"Execute task {Method} failed: {(ex.InnerException == null ? ex.Message : ex.InnerException.Message)}\nStack trace:{ex.StackTrace}");
+                        $"Execute task {Method} failed: {(ex.InnerException == null ? ex.Message : ex.InnerException.Message)}\nStack trace:\n{ex.StackTrace}");
                 }
             }), MaximumExecuteTime, executionId) {CreateTime = DateTime.Now};
             return taskThread;
